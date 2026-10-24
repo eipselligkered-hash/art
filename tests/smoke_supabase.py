@@ -14,7 +14,7 @@ b64 = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).decode().rstrip
 def jwt():
     now = int(time.time()); return f"{b64({'alg':'HS256','typ':'JWT'})}.{b64({'sub':UID,'email':EMAIL,'role':'authenticated','aud':'authenticated','exp':now+3600,'iat':now})}.c2ln"
 USER = {"id": UID, "email": EMAIL, "aud": "authenticated", "role": "authenticated", "app_metadata": {}, "user_metadata": {}, "created_at": "2026-10-01T00:00:00Z"}
-state = {"schema": False, "n": 0}
+state = {"schema": False, "n": 0, "old_check": True}   # old_check: database before migration 002
 DB = {"art_items": [], "art_ticks": [], "art_health": [], "art_supplies": []}
 def fake(route):
     req = route.request; path = req.url.split(FAKE, 1)[1]
@@ -42,6 +42,8 @@ def fake(route):
         out = []
         for r in new:
             assert r.get("owner_id") == UID, "owner_id missing"
+            if t == "art_items" and state["old_check"] and r.get("frequency") in ("A few times a week", "Every 4 weeks"):
+                return route.fulfill(status=400, headers=hdr, body=json.dumps({"code": "23514", "message": 'new row for relation "art_items" violates check constraint "art_items_frequency_check"'}))
             if t in ("art_items", "art_supplies") and any(x["name"] == r["name"] for x in rows): continue   # ignoreDuplicates
             state["n"] += 1; r = dict({"id": f"{t}-{state['n']}", "created_at": "2026-10-24T08:12:00Z"}, **r); rows.append(r); out.append(r)
         return route.fulfill(status=201, headers=hdr, body=json.dumps(out[0] if single else out))
@@ -69,9 +71,9 @@ with sync_playwright() as p:
     ok("tables missing: clear SQL Editor message", "aren't set up yet" in pg.inner_text("#view") and "schema.sql" in pg.inner_text("#view"))
     state["schema"] = True
     pg.click("[data-retry]"); pg.wait_for_selector(".progress", timeout=15000)
-    ok("first sign-in seeds Art's list", len(DB["art_items"]) == 9 and len(DB["art_supplies"]) == 4 and len(DB["art_health"]) == 1)
+    ok("first sign-in seeds Art's list (minus 2 blocked by the old check)", len(DB["art_items"]) == 23 and len(DB["art_supplies"]) == 7 and len(DB["art_health"]) == 1)
     ok("seeded rows belong to the user", all(r["owner_id"] == UID for r in DB["art_items"] + DB["art_health"]))
-    ok("today shows due treatments", "Worming tablet" in pg.inner_text("#view") and "0 of 4 done today" in pg.inner_text("#view"))
+    ok("today shows due treatments", "Worming tablet" in pg.inner_text("#view") and "0 of 5 done today" in pg.inner_text("#view"))
     pg.click("[data-who=Peter]")
     pg.locator(".item[data-id]", has_text="Worming").locator(".tick").tap(); pg.wait_for_selector("#toast:not([hidden])")
     tk = DB["art_ticks"][0] if DB["art_ticks"] else {}
@@ -81,7 +83,12 @@ with sync_playwright() as p:
     ok("undo deletes tick + restores due date", not DB["art_ticks"] and next(i for i in DB["art_items"] if i["name"] == "Worming tablet")["due_date"] == "2026-10-24")
     ok("data cached on device", pg.evaluate(f"!!localStorage.getItem('art.cache.v1.{UID}')"))
     pg.reload(); pg.wait_for_selector(".progress", timeout=15000)
-    ok("reload does not seed twice", len(DB["art_items"]) == 9 and len(DB["art_health"]) == 1)
+    ok("reload does not seed twice", len(DB["art_items"]) == 23 and len(DB["art_health"]) == 1 and len(DB["art_supplies"]) == 7)
+    state["old_check"] = False   # Derek runs migration 002
+    pg.reload(); pg.wait_for_selector(".progress", timeout=15000); pg.wait_for_timeout(500)
+    ok("after migration: the 2 missing items are added on next open", len(DB["art_items"]) == 25 and sorted(i["name"] for i in DB["art_items"][-2:]) == ["Nail trim", "Teeth brushing"])
+    pg.reload(); pg.wait_for_selector(".progress", timeout=15000)
+    ok("then nothing more", len(DB["art_items"]) == 25)
     ok("no page errors", not errors)
     if errors: print(errors)
     br.close()

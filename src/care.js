@@ -1,7 +1,7 @@
 // Pure care rules for Art's checklist. No dependencies; works in the browser and in Node.
 // Dates are ISO strings 'YYYY-MM-DD' in and out; internally whole days since 1970-01-01 (UTC) - no time-zone/DST surprises.
 export const FREQUENCIES = {   // name: [days, calendar months]
-  'Daily': [1, 0], 'Weekly': [7, 0], 'Fortnightly': [14, 0], 'Monthly': [0, 1], 'Every 2 months': [0, 2],
+  'Daily': [1, 0], 'A few times a week': [3, 0], 'Weekly': [7, 0], 'Fortnightly': [14, 0], 'Every 4 weeks': [28, 0], 'Monthly': [0, 1], 'Every 2 months': [0, 2],
   'Every 3 months': [0, 3], 'Every 6 months': [0, 6], 'Yearly': [0, 12], 'One-off': [0, 0],
 };
 export const WHO = ['Derek', 'Peter'];
@@ -23,7 +23,25 @@ export function addInterval(iso, frequency) {
   return months ? addMonths(iso, months) : days ? addDays(iso, days) : null;
 }
 /** How many days ahead counts as 'Due soon' (yearly/half-yearly: a month, so there's time to book the vet). */
-export const soonDays = (frequency) => ({ 'Daily': 0, 'Weekly': 2, 'Fortnightly': 3, 'Every 6 months': 30, 'Yearly': 30 }[frequency] ?? 7);
+export const soonDays = (frequency) => ({ 'Daily': 0, 'A few times a week': 1, 'Weekly': 2, 'Fortnightly': 3, 'Every 4 weeks': 5, 'Every 6 months': 30, 'Yearly': 30 }[frequency] ?? 7);
+/** Frequencies the first version of the database accepted (supabase/migrations/002_frequencies.sql widens it). */
+export const V1_FREQUENCIES = ['Daily', 'Weekly', 'Fortnightly', 'Monthly', 'Every 2 months', 'Every 3 months', 'Every 6 months', 'Yearly', 'One-off'];
+
+// ---------- categories: section order on Care (and the full list); old names map to the new ones
+export const CATEGORY_ORDER = ['Daily', 'Treatments', 'Grooming', 'Vet & health', 'Home & admin', 'Seasonal'];
+export const CATEGORY_RENAMES = { 'Treatment': 'Treatments', 'Vet': 'Vet & health' };
+export const UNCATEGORISED = 'Other';
+export const normCategory = (item) => {
+  const c = String(item.category || '').trim(); if (!c) return isDaily(item) ? 'Daily' : UNCATEGORISED;
+  const k = Object.keys(CATEGORY_RENAMES).find((x) => x.toLowerCase() === c.toLowerCase()); if (k) return CATEGORY_RENAMES[k];
+  return CATEGORY_ORDER.find((x) => x.toLowerCase() === c.toLowerCase()) || c;
+};
+/** [[category, rows]] in CATEGORY_ORDER, then other categories A–Z, then uncategorised; rows keep their order. */
+export function groupByCategory(rows) {
+  const m = new Map(); for (const r of rows) { const c = normCategory(r.item); if (!m.has(c)) m.set(c, []); m.get(c).push(r); }
+  const rank = (c) => (c === UNCATEGORISED ? 2e3 : CATEGORY_ORDER.includes(c) ? CATEGORY_ORDER.indexOf(c) : 1e3);
+  return [...m].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
+}
 export const isDaily = (item) => item.frequency === 'Daily';
 export const isOneOff = (item) => item.frequency === 'One-off';
 
@@ -109,7 +127,7 @@ export function latestWeight(health = []) {
 const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const bigrams = (s) => { const b = new Map(); for (let i = 0; i < s.length - 1; i++) { const k = s.slice(i, i + 2); b.set(k, (b.get(k) || 0) + 1); } return b; };
 const dice = (a, b) => { const A = bigrams(a), B = bigrams(b); let n = 0; for (const [k, v] of A) n += Math.min(v, B.get(k) || 0); return (2 * n) / Math.max(1, a.length + b.length - 2); };
-const ALIAS = { wormer: 'worming', worm: 'worming', flea: 'flea', vaccination: 'vaccine', booster: 'vaccine', bath: 'wash', teeth: 'teeth', dental: 'teeth' };
+const ALIAS = { wormer: 'worming', worm: 'worming', flea: 'flea', bath: 'wash', teeth: 'teeth', dental: 'teeth' };
 export function matchByName(q, rows, name = (x) => x.name) {
   const nq = norm(q).split(' ').map((w) => ALIAS[w] || w).join(' ');
   let c = rows.filter((x) => norm(name(x)) === nq);

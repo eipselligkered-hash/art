@@ -22,8 +22,9 @@ test('CLI against a fake Supabase REST API: due, done, undo, low, log', async ()
   const f = await startFake(fakeDb()); const env = { SUPABASE_URL: f.url, SUPABASE_SERVICE_KEY: 'test-service-key' };
   try {
     const due = JSON.parse(await run(['due', '--today', '2026-10-24', '--json'], env));
-    assert.deepEqual(due.due.map((r) => [r.name, r.status]), [['Worming tablet', 'Due soon'], ['Flea tablet', 'Due soon'], ['Wash', 'Due soon'], ['Teeth cleaning at vet', 'To book']]);
-    assert.equal(due.next.name, 'Vaccine booster'); assert.equal(due.next.next_due, '2027-08-15'); assert.equal(due.weight.weight_kg, 20);
+    assert.deepEqual(due.due.slice(0, 3).map((r) => [r.name, r.status]), [['Worming tablet', 'Due soon'], ['Flea tablet', 'Due soon'], ['Wash', 'Due soon']]);
+    assert.equal(due.daily.length, 5);
+    assert.equal(due.next.name, 'Weigh-in'); assert.equal(due.next.next_due, '2026-11-24'); assert.equal(due.weight.weight_kg, 20);
     const d = await run(['done', 'worming', 'morning walk', '--who', 'peter', '--today', '2026-10-24'], env);
     assert.match(d, /Worming tablet done Sat 24\/10\/2026 \(Peter\).*next due Tue 24\/11\/2026/); assert.match(d, /Morning walk done/);
     assert.equal(f.db.art_ticks.length, 2); assert.equal(f.db.art_ticks[0].owner_id, OWNER); assert.equal(f.db.art_ticks[0].source, 'assistant'); assert.equal(f.db.art_ticks[0].who, 'Peter');
@@ -46,9 +47,9 @@ test('CLI seed uses the Chores owner when Art has no data yet', async () => {
   const env = { SUPABASE_URL: f.url, SUPABASE_SERVICE_KEY: 'test-service-key' };
   try {
     assert.match(await run(['due'], env).catch((e) => e.message), /No Art data yet/);
-    assert.match(await run(['seed'], env), /Seeded 9 items, 4 supplies, 1 health entry/);
+    assert.match(await run(['sync'], env), /added 25 items.*7 supplies.*1 health entries/);
     assert.ok(f.db.art_items.every((i) => i.owner_id === OWNER));
-    assert.match(await run(['seed'], env), /already has data/);
+    assert.match(await run(['seed'], env), /Nothing to add/);
   } finally { f.close(); }
 });
 
@@ -59,4 +60,19 @@ test('CLI against the local mock file', async () => {
   assert.equal(JSON.parse(fs.readFileSync(file)).ticks.length, 1);
   assert.match(await run(['done', 'flea', '--mock', file, '--today', '2026-10-24', '--date', '2026-10-30']).catch((e) => e.message), /in the future/);
   fs.rmSync(file);
+});
+
+test('CLI sync tops up an old (v1) account: new items/supplies by name + category renames', async () => {
+  const s = seedRows(seed); let n = 0; const own = (r) => ({ id: `row-${++n}`, owner_id: OWNER, ...r });
+  const v1 = s.items.slice(0, 9).map((i) => ({ ...i, category: { Treatments: 'Treatment', 'Vet & health': 'Vet' }[i.category] || i.category }));
+  const f = await startFake({ tasks: [], art_items: v1.map(own), art_ticks: [], art_health: s.health.map(own), art_supplies: s.supplies.slice(0, 4).map(own) });
+  const env = { SUPABASE_URL: f.url, SUPABASE_SERVICE_KEY: 'test-service-key' };
+  try {
+    assert.match(await run(['sync', '--dry-run'], env), /add 16 items.*3 supplies, 0 health entries; 4 updates/);
+    assert.equal(f.db.art_items.length, 9);
+    assert.match(await run(['sync'], env), /added 16 items.*3 supplies \(Poo bags, Shampoo, Dental chews\), 0 health entries; 4 updates/);
+    assert.equal(f.db.art_items.length, 25); assert.ok(f.db.art_items.every((i) => i.owner_id === OWNER && !['Treatment', 'Vet'].includes(i.category)));
+    assert.match(f.db.art_items.find((i) => i.name === 'Flea tablet').notes, /NexGard/);
+    assert.match(await run(['sync'], env), /Nothing to add/);
+  } finally { f.close(); }
 });

@@ -35,5 +35,5 @@ test('schema: art_ tables only, RLS on all of them', () => {
 test('index loads versioned assets and the four tabs', () => {
   const html = read('index.html');
   for (const t of ['today', 'care', 'health', 'supplies']) assert.match(html, new RegExp(`data-tab="${t}"`));
-  assert.match(html, /src\/app\.js\?v=1/);
+  assert.match(html, /src\/app\.js\?v=2/);
 });

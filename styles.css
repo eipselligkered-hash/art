@@ -171,3 +171,4 @@ details.fold > summary.sec small { text-align: right; }
 .item.low { box-shadow: inset 4px 0 0 var(--amber); }
 .vet a { color: var(--brand); font-weight: 600; }
 .section-h { font-size: 15px; margin: 18px 4px 8px; }
+h3.sub-sec { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 12px 6px 6px; }

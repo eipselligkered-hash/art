@@ -5,8 +5,9 @@ Supabase project as the [Chores app](https://github.com/eipselligkered-hash/chor
 
 * **Today** – Morning walk, Breakfast, Evening walk, Dinner. Tap ✓ = done today (tap again to untick); long-press or ⋯ = pick a date; Undo.
   *Ticking as Derek / Peter / Nobody* (saved per phone) records who did it. Below: treatments that are **Overdue**, **Due soon** or **To book**,
-  and a *Running low* line from Supplies.
-* **Care** – every treatment/vet item with next due and status, soonest first; **+ Add item**; tap a name for the item sheet:
+  and a *Running low* line from Supplies. Due items are grouped under the same category headings.
+* **Care** – every item in sections: **Daily, Treatments, Grooming, Vet & health, Home & admin, Seasonal** (other categories after, then *Other*),
+  soonest first within each; **+ Add item**; tap a name for the item sheet:
   next due, short history (with who; *remove* a tick), notes, ✓ Done today, Pick a date…, ✎ Edit (rename, how often, Last done,
   *Due / booked for* date, notes, retire via *Active*).
 * **Health** – latest weight, vet details (tap to call), dated free-text entries with optional weight in kg; tap to edit/delete (Undo).
@@ -18,9 +19,16 @@ Supabase project as the [Chores app](https://github.com/eipselligkered-hash/chor
 * **Next due** = *Due / booked for* date while nothing has been ticked on/after it; otherwise Last done (latest of typed Last done and ticks)
   + the interval (calendar months for monthly/yearly, clamped to the month end). Ticking uses up the due date (kept on the tick, so
   Undo / *remove* / CLI `undo` puts it back).
+* **How often**: Daily, A few times a week (every 3 days), Weekly, Fortnightly, Every 4 weeks, Monthly, Every 2/3/6 months, Yearly, One-off.
+  *A few times a week* and *Every 4 weeks* need `supabase/migrations/002_frequencies.sql` on a database set up with the v1 schema.
 * **Status**: Overdue (before today) · Due soon (within 7 days; a month for yearly/6-monthly, 2–3 days for weekly/fortnightly) · OK ·
   To book (one-off without a date) · No date · Done (one-off ticked). Daily items: Done / To do for today.
-* Seed (24/10/2026): worming, flea tablet and wash due now (24/10/2026); vaccine booster last 15/08/2026 → due 15/08/2027; teeth cleaning to book.
+* Seed v2 (24/10/2026, `data/seed.json`): 25 items + 7 supplies – walks/meals/fresh water; worming, flea, wash, nail trim, ear check,
+  teeth brushing, coat brush, microchip check, wash bed/bowls due now; vaccine booster + annual check-up 15/08/2027; weigh-in 24/11/2026;
+  teeth cleaning + kennel cough to book; dog licence + insurance renewal (no date yet); Halloween 29/10, winter coat 01/11, Christmas 15/12.
+* **Seed sync**: on the first sign-in the app adds the whole seed; when the seed gets a new `version`, each account is topped up once per
+  device with whatever is missing **by name** (nothing duplicated, edits kept), plus category renames (Treatment → Treatments, Vet → Vet & health)
+  and note additions. Rows the database rejects (new frequency before migration 002) are retried on the next open. CLI: `sync`.
 
 ## Files
 | Path | What |
@@ -30,6 +38,7 @@ Supabase project as the [Chores app](https://github.com/eipselligkered-hash/chor
 | `src/data.js` | `MockBackend` (localStorage, from `data/seed.json`) and `SupabaseBackend` (art_* tables, magic link + email code) |
 | `data/seed.json` | Art's starting list – the app inserts it on the first sign-in |
 | `config.js` | Supabase URL + anon key (same as Chores), dog + vet details |
+| `supabase/migrations/002_frequencies.sql` | v2: allows *A few times a week* and *Every 4 weeks* |
 | `supabase/schema.sql` | `art_items`, `art_ticks`, `art_health`, `art_supplies` + row-level security (owner only, like Chores) |
 | `scripts/assistant_cli/cli.mjs` | Dog Care assistant helper (REST + service key, or a mock file) |
 | `tests/` | `node --test tests/` (rules, CLI vs fake PostgREST, secrets/schema checks); `tests/smoke_ui.py` (mock) + `tests/smoke_supabase.py` (fake Supabase) with Playwright |
@@ -43,6 +52,7 @@ node --test tests/
 
 ## Set up (once)
 1. Supabase → **SQL Editor → New query** → paste all of `supabase/schema.sql` → **Run** (safe to run again).
+   Already ran the v1 schema? Also run `supabase/migrations/002_frequencies.sql` (3 lines; safe to run again).
 2. Supabase → **Authentication → URL Configuration → Redirect URLs** → add `https://eipselligkered-hash.github.io/art/` (keep the Chores one).
 3. Open the app and sign in with the same email as Chores (if Chores is already signed in in the same browser, Art is too – same site).
    The first sign-in fills in Art's list. **Share → Add to Home Screen** (iPhone) or **⋮ → Install app** (Android).
@@ -58,10 +68,10 @@ node scripts/assistant_cli/cli.mjs undo "worming"         # removes the latest t
 node scripts/assistant_cli/cli.mjs history "flea"
 node scripts/assistant_cli/cli.mjs log "Vet check, all fine" --weight 20.4 [--date 2026-10-24]
 node scripts/assistant_cli/cli.mjs health | supplies | low "flea tablets" | stocked "flea tablets"
-node scripts/assistant_cli/cli.mjs seed                   # only if the app hasn't been opened yet (uses the Chores account)
+node scripts/assistant_cli/cli.mjs sync [--dry-run]       # add what's missing from data/seed.json by name + renames (first time: uses the Chores account)
 # offline / testing: --mock /tmp/art.json instead of the key; --today YYYY-MM-DD simulates a date; --dry-run
 ```
-Names are fuzzy (`wormer`, `booster`, `bath`, `teeth` work). Ambiguous names (e.g. `walk`) list the candidates and exit 2.
+Names are fuzzy (`wormer`, `booster`, `bath`, `nail` work). Ambiguous names (e.g. `walk`, `teeth`) list the candidates and exit 2.
 
 ## Backup / restore
 Settings → *Download backup*. To restore into an empty project: run `supabase/schema.sql`, then insert with the service key, parents first –

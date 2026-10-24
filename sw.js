@@ -1,5 +1,5 @@
 // Offline app shell. Bump VERSION when you deploy changes.
-const VERSION = 'art-v1';
+const VERSION = 'art-v2';
 const SHELL = ['./', 'index.html', 'styles.css', 'config.js', 'manifest.webmanifest', 'src/app.js', 'src/data.js', 'src/care.js',
   'vendor/supabase.js', 'data/seed.json', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', (e) => e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting())));

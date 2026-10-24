@@ -9,7 +9,7 @@ create table if not exists public.art_items (
   owner_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name        text not null check (length(name) between 1 and 120),
   category    text,                                   -- Daily | Treatment | Grooming | Vet | ... (free text)
-  frequency   text not null check (frequency in ('Daily','Weekly','Fortnightly','Monthly','Every 2 months','Every 3 months','Every 6 months','Yearly','One-off')),
+  frequency   text not null check (frequency in ('Daily','A few times a week','Weekly','Fortnightly','Every 4 weeks','Monthly','Every 2 months','Every 3 months','Every 6 months','Yearly','One-off')),
   last_done   date,                                   -- typed Last done (ticks also count: effective = latest of both)
   due_date    date,                                   -- known/booked next date; used until something is ticked on/after it
   notes       text,

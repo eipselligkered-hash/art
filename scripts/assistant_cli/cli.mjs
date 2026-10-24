@@ -9,7 +9,8 @@
 //   node scripts/assistant_cli/cli.mjs log "Vet check, all fine" [--weight 20.4] [--date YYYY-MM-DD]   add a health-log entry
 //   node scripts/assistant_cli/cli.mjs health   [--json]                         health log, newest first
 //   node scripts/assistant_cli/cli.mjs supplies [--json]  |  low "flea tablets"  |  stocked "flea tablets"
-//   node scripts/assistant_cli/cli.mjs seed [--owner UUID]                       first-time setup when the app hasn't been opened yet
+//   node scripts/assistant_cli/cli.mjs sync [--owner UUID] [--dry-run]           add what's missing from data/seed.json (by name), apply category renames
+//                                                                                 (also first-time setup when the app hasn't been opened yet; 'seed' = alias)
 //
 // Backend: SUPABASE_URL (default: the Chores/Art project) + SUPABASE_SERVICE_KEY env vars -> REST. The service key bypasses RLS:
 //          keep it secret, never in the web app. Rows are scoped to one owner (the only one with Art data, or --owner / ART_OWNER).
@@ -17,7 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { computeAll, computeItem, byStatus, needsAttention, planTick, restoreOnRemove, fmtDate, dueText, isDaily, matchByName, ticksOf, validWeight, latestWeight, timeOf, WHO } from '../../src/care.js';
-import { seedRows } from '../../src/data.js';
+import { seedRows, syncSeed } from '../../src/data.js';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const DEFAULT_URL = 'https://rwbiizjwvyssdyxjuqan.supabase.co';
@@ -104,17 +105,23 @@ export async function main(argv = process.argv.slice(2)) {
   if (whoArg && !who) { console.error(`--who must be one of ${WHO.join(', ')}`); return 1; }
 
   const db = await store.load();
-  if (cmd === 'seed') {
-    if (db.items.length || db.supplies.length || db.health.length) { console.log('Art already has data – nothing seeded.'); return 0; }
-    const owner = ownerArg || await store.guessOwner();
-    if (!owner) { console.error('Could not tell which account to use – pass --owner UUID (the user id from Supabase > Authentication > Users).'); return 1; }
-    store.owner = owner;
-    const s = seedRows(JSON.parse(fs.readFileSync(path.join(ROOT, 'data/seed.json'))));
-    if (dry) { console.log(`[dry-run] would seed ${s.items.length} items, ${s.supplies.length} supplies, ${s.health.length} health entries for ${owner}`); return 0; }
-    await store.addMany('items', s.items); await store.addMany('supplies', s.supplies); await store.addMany('health', s.health);
-    console.log(`Seeded ${s.items.length} items, ${s.supplies.length} supplies, ${s.health.length} health entry for ${owner}`); return 0;
+  if (cmd === 'seed' || cmd === 'sync') {
+    if (!db.owner) {
+      const owner = ownerArg || await store.guessOwner();
+      if (!owner) { console.error('Could not tell which account to use – pass --owner UUID (the user id from Supabase > Authentication > Users).'); return 1; }
+      store.owner = owner; db.owner = owner;
+    }
+    const seed = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/seed.json')));
+    if (dry) {
+      const { planSeedSync } = await import('../../src/data.js'); const p = planSeedSync(db, seed);
+      console.log(`[dry-run] for ${db.owner}: add ${p.items.length} items${p.items.length ? ` (${p.items.map((i) => i.name).join(', ')})` : ''}, ${p.supplies.length} supplies, ${p.health.length} health entries; ${p.patches.length} updates`); return 0;
+    }
+    const r = await syncSeed(store, db, seed);
+    console.log(r.changed ? `Synced for ${db.owner}: added ${r.items.length} items${r.items.length ? ` (${r.items.join(', ')})` : ''}, ${r.supplies.length} supplies${r.supplies.length ? ` (${r.supplies.join(', ')})` : ''}, ${r.health} health entries; ${r.patched} updates (category renames / notes)` : 'Nothing to add – Art already has everything in the seed.');
+    for (const k of r.skipped) console.log(`! skipped ${k.name}: ${/frequency_check/.test(k.why) ? 'needs supabase/migrations/002_frequencies.sql' : k.why}`);
+    return r.complete ? 0 : 2;
   }
-  if (!db.owner || (!db.items.length && cmd !== 'log')) { console.error('No Art data yet – open the app once and sign in (it sets up Art’s list), or run: cli.mjs seed'); return 1; }
+  if (!db.owner || (!db.items.length && cmd !== 'log')) { console.error('No Art data yet – open the app once and sign in (it sets up Art’s list), or run: cli.mjs sync'); return 1; }
 
   const rows = computeAll(db.items, db.ticks, today);
   const daily = rows.filter((r) => isDaily(r.item)), care = rows.filter((r) => !isDaily(r.item)).sort(byStatus);

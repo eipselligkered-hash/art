@@ -1,8 +1,8 @@
 import { FREQUENCIES, WHO, computeAll, computeItem, byStatus, needsAttention, planTick, fmtDate, dueText, addDays, timeOf, validWeight,
-  latestWeight, isDaily, isOneOff, lastDone, monday, restoreOnRemove } from './care.js?v=1';
-import { makeBackend } from './data.js?v=1';
+  latestWeight, isDaily, isOneOff, lastDone, monday, restoreOnRemove, groupByCategory, normCategory, CATEGORY_ORDER } from './care.js?v=2';
+import { makeBackend, fetchSeed, syncSeed } from './data.js?v=2';
 
-const VER = 'v1';
+const VER = 'v2';
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const cls = (s) => String(s).replace(/[()]/g, '').replace(/\s+/g, '-');
@@ -21,13 +21,27 @@ async function refresh() {
     if (be.kind !== 'mock' && !navigator.onLine) throw new Error('offline');
     // a paused/unreachable project or a flaky connection can hang for a long time: give up after 15 s
     db = await Promise.race([be.load(), new Promise((_, ko) => setTimeout(() => ko(new Error('Timed out reaching the database')), 15000))]);
-    if (await be.seedIfEmpty(db)) db = await be.load();   // first sign-in: Art's starting list
+    if (await syncSeedOnce(db)) db = await be.load();   // first sign-in: Art's starting list; later: new seed items (by name)
   } catch (err) {
     if (n === loadSeq) { state.conn = connProblem(err); state.connErr = String(err?.message || err); if (state.db) render(); else renderUnreachable(); }
     throw err;
   }
   if (n !== loadSeq) return;
   state.db = db; state.conn = ''; saveCache(db); render();
+}
+// Art's starting list: added on the first sign-in, topped up when data/seed.json gets a new version (matched by name, so
+// nothing is duplicated and edits are kept). Remembered per account on this device once everything went in.
+async function syncSeedOnce(db) {
+  if (state.seedChecked) return false; state.seedChecked = true;
+  try {
+    const seed = await fetchSeed(), key = `art.seed.v${seed.version || 1}.${be.user?.id || 'mock'}`;
+    const fresh = !db.items.length && !db.supplies.length && !db.health.length;
+    if (!fresh && localStorage.getItem(key)) return false;
+    const r = await syncSeed(be, db, seed);
+    if (r.complete) localStorage.setItem(key, new Date().toISOString());
+    else console.warn('Some of the starting list could not be added yet:', r.skipped);
+    return r.changed;
+  } catch (err) { console.warn('seed sync skipped', err); return false; }
 }
 // ---------- connection problems, offline cache
 const isNetErr = (err) => !navigator.onLine || /failed to fetch|networkerror|load failed|network|offline|fetch/i.test(String(err?.message || err));
@@ -133,12 +147,12 @@ function dailyRow(r) {
       <div class="meta">${done ? `<span>✓ ${esc(timeOf(t.created_at)) || 'done'}</span>${whoChip(t.who)}` : '<span>not yet</span>'}</div></div>
     <button class="more" data-act="date" aria-label="Done on another date">⋯</button></div>`;
 }
-function careRow(r) {
+function careRow(r, { cat = true } = {}) {
   const it = r.item, doneToday = r.today_ticks.length > 0;
   return `<div class="item" data-id="${it.id}">
     <button class="tick ${doneToday ? 'done' : ''}" data-act="done" aria-label="Mark ${esc(it.name)} done today">✓</button>
     <div class="body"><div class="name">${esc(it.name)}</div>
-      <div class="meta">${it.category ? `<span class="cat">${esc(it.category)}</span>` : ''}<span>${esc(it.frequency)}</span>${statusChip(r.status)}<span>${esc(dueText(r))}</span></div></div>
+      <div class="meta">${cat && it.category ? `<span class="cat">${esc(normCategory(it))}</span>` : ''}<span>${esc(it.frequency)}</span>${statusChip(r.status)}<span>${esc(dueText(r))}</span></div></div>
     <button class="more" data-act="date" aria-label="Done on another date">⋯</button></div>`;
 }
 const section = (title, rows, note = '', klass = '') => rows.length
@@ -158,7 +172,10 @@ function renderToday() {
   let h = lowBanner() + whoSeg() + `<div class="card progress"><div class="nums"><div><span class="big">${nDone}</span> <span class="of">of ${daily.length} done today</span></div><div class="of">${fmtDate(today, { short: true })}</div></div>
     <div class="bar" role="img" aria-label="${nDone} of ${daily.length} done"><span class="done" style="width:${pct.toFixed(1)}%"></span></div></div>`;
   h += section('Today', daily.map(dailyRow), 'walks & meals');
-  h += due.length ? section('💊 Due', due.map(careRow), 'treatments & vet') : `<div class="card empty">No treatments due 🎉<br><span class="small">Next: ${esc(nextUp(rows))}</span></div>`;
+  if (due.length) {
+    h += `<h2 class="sec">💊 Due &amp; to sort<small>${due.length} item${due.length === 1 ? '' : 's'} · soonest first</small></h2>`;
+    for (const [cat, rs] of groupByCategory(due)) h += `<h3 class="sub-sec">${esc(cat)}</h3><div class="list">${rs.map((r) => careRow(r, { cat: false })).join('')}</div>`;
+  } else h += `<div class="card empty">Nothing due 🎉<br><span class="small">Next: ${esc(nextUp(rows))}</span></div>`;
   h += section('Done today', doneToday.map(careRow), '');
   h += `<p class="hint">Tap ✓ = done today (tap again on a walk or meal to untick); long-press or ⋯ = pick a date. Tap a name for history and notes.</p>`;
   return h;
@@ -170,16 +187,19 @@ function nextUp(rows) {
 
 function renderCare() {
   const today = localToday(), rows = computeAll(state.db.items, state.db.ticks, today);
-  const care = rows.filter((r) => !isDaily(r.item)).sort(byStatus), daily = rows.filter((r) => isDaily(r.item));
-  const counts = {}; care.forEach((r) => (counts[r.status] = (counts[r.status] || 0) + 1));
+  const counts = {}; rows.filter((r) => !isDaily(r.item)).forEach((r) => (counts[r.status] = (counts[r.status] || 0) + 1));
+  const daySort = (a, b) => (a.item.sort_key ?? 0) - (b.item.sort_key ?? 0);
   let h = `<div class="toolbar"><button class="primary add" data-add style="flex:1">+ Add item</button><button class="ghost gear" data-settings aria-label="Settings">⚙</button></div>
     <div class="summary" style="margin-top:10px">${['Overdue', 'Due soon', 'To book', 'No date', 'OK', 'Done'].filter((s) => counts[s]).map((s) => `<span class="chip s-${cls(s)}">${counts[s]} ${s}</span>`).join('')}</div>`;
-  h += section('Treatments & vet', care.map(careRow), 'soonest first');
-  h += section('Every day', daily.map(dailyRow), '');
+  for (const [cat, rs] of groupByCategory(rows)) {
+    const daily = rs.every((r) => isDaily(r.item)), list = rs.slice().sort(daily ? daySort : byStatus);
+    const att = list.filter((r) => ['Overdue', 'Due soon'].includes(r.status)).length;
+    h += section(esc(cat), list.map((r) => (isDaily(r.item) ? dailyRow(r) : careRow(r, { cat: false }))), daily ? 'every day' : att ? `${att} due` : `${list.length} item${list.length === 1 ? '' : 's'}`);
+  }
   const retired = state.db.items.filter((i) => i.active === false).sort((a, b) => a.name.localeCompare(b.name));
   if (retired.length) h += `<details class="room retired"><summary><span>Retired <small class="muted">(${retired.length})</small></span></summary>
-    ${retired.map((i) => `<div class="item" data-tid="${i.id}"><div class="body"><div class="name">${esc(i.name)}</div><div class="meta"><span>${esc(i.frequency)}</span></div></div></div>`).join('')}</details>`;
-  return h + `<p class="hint">Tap a name for history, notes and ✎ Edit (rename, change how often, set a booked date, retire).</p>`;
+    ${retired.map((i) => `<div class="item" data-tid="${i.id}"><div class="body"><div class="name">${esc(i.name)}</div><div class="meta"><span>${esc(normCategory(i))}</span><span>${esc(i.frequency)}</span></div></div></div>`).join('')}</details>`;
+  return h + `<p class="hint">Tap a name for history, notes and ✎ Edit (rename, change how often or category, set a booked date, retire).</p>`;
 }
 
 function renderHealth() {
@@ -370,7 +390,7 @@ function openItem(id) {
   const weekN = daily ? state.db.ticks.filter((t) => t.item_id === it.id && t.done_on >= monday(today) && t.done_on <= today).length : 0;
   const d = $('#item-sheet');
   d.innerHTML = `<form method="dialog"><div class="sheet-head"><h2>${esc(it.name)}</h2><button value="close" class="x" aria-label="Close">✕</button></div>
-    <div class="meta big-meta">${it.category ? `<span>${esc(it.category)}</span>` : ''}<span>${esc(it.frequency)}</span>${statusChip(r.status)}${retired ? '<span class="chip s-No-date">Retired</span>' : ''}</div>
+    <div class="meta big-meta">${it.category ? `<span>${esc(normCategory(it))}</span>` : ''}<span>${esc(it.frequency)}</span>${statusChip(r.status)}${retired ? '<span class="chip s-No-date">Retired</span>' : ''}</div>
     <dl class="facts">
       ${daily ? `<dt>This week</dt><dd>${weekN} of ${Math.min(7, (new Date(today).getUTCDay() + 6) % 7 + 1)} days (from Monday)</dd>` : `<dt>Next due</dt><dd>${r.next_due ? `${fmtDate(r.next_due, { long: true })}${r.days <= 14 ? ` <span class="muted small">(${esc(dueText(r))})</span>` : ''}` : esc(dueText(r))}
         ${it.due_date && r.next_due === it.due_date ? '<div class="muted small">set date (booked / known) – a tick moves it on</div>' : ''}</dd>`}
@@ -393,11 +413,11 @@ function openEdit(it) {
   const isNew = !it, d = $('#edit-sheet'), db = state.db;
   it = it || { name: '', category: '', frequency: 'Monthly', notes: '', active: true };
   const shownLast = isNew ? null : lastDone(it, db.ticks);
-  const cats = [...new Set(db.items.map((x) => x.category).filter(Boolean))].sort();
+  const cats = [...new Set([...CATEGORY_ORDER, ...db.items.filter((x) => x.category).map((x) => normCategory(x)).sort()])];
   d.innerHTML = `<form id="edit-form" novalidate><div class="sheet-head"><h2>${isNew ? 'Add item' : 'Edit item'}</h2><button type="button" class="x" id="ed-x" aria-label="Close">✕</button></div>
     <label class="field">Name <input name="name" required value="${esc(it.name)}" placeholder="e.g. Nail trim"></label>
     <div class="two"><label class="field">How often <select name="frequency">${Object.keys(FREQUENCIES).map((f) => `<option ${f === it.frequency ? 'selected' : ''}>${f}</option>`).join('')}</select></label>
-      <label class="field">Category <input name="category" list="cats-dl" value="${esc(it.category || '')}" placeholder="optional" autocomplete="off"><datalist id="cats-dl">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label></div>
+      <label class="field">Category <input name="category" list="cats-dl" value="${esc(it.category ? normCategory(it) : '')}" placeholder="optional" autocomplete="off"><datalist id="cats-dl">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label></div>
     <div class="two"><label class="field">Last done <input name="last_done" type="date" value="${shownLast || ''}" max="${localToday()}"></label>
       <label class="field">Due / booked for <input name="due_date" type="date" value="${it.due_date || ''}"></label></div>
     <p class="muted small">Leave <b>Due / booked for</b> empty to count from Last done. Set it when you know the date (e.g. a vet appointment); ticking it done moves it on.</p>

@@ -1,22 +1,260 @@
 {
+ "version": 2,
  "items": [
-  { "name": "Morning walk", "category": "Daily", "frequency": "Daily", "sort_key": 1, "notes": "Derek walks Art every day (works from home Mon/Wed/Fri)." },
-  { "name": "Breakfast", "category": "Daily", "frequency": "Daily", "sort_key": 2, "notes": null },
-  { "name": "Evening walk", "category": "Daily", "frequency": "Daily", "sort_key": 3, "notes": null },
-  { "name": "Dinner", "category": "Daily", "frequency": "Daily", "sort_key": 4, "notes": null },
-  { "name": "Worming tablet", "category": "Treatment", "frequency": "Monthly", "sort_key": 10, "due_date": "2026-10-24", "notes": "Last given September 2026 (exact day not known), so treated as due now (October 2026)." },
-  { "name": "Flea tablet", "category": "Treatment", "frequency": "Monthly", "sort_key": 11, "due_date": "2026-10-24", "notes": "Due now (October 2026)." },
-  { "name": "Wash", "category": "Grooming", "frequency": "Monthly", "sort_key": 12, "due_date": "2026-10-24", "notes": "Date of the last wash not known, so treated as due now." },
-  { "name": "Vaccine booster", "category": "Vet", "frequency": "Yearly", "sort_key": 13, "last_done": "2026-08-15", "notes": "Last booster mid-August 2026 (date taken as 15/08/2026). Dublin Bay Vets, 01 539 2330." },
-  { "name": "Teeth cleaning at vet", "category": "Vet", "frequency": "One-off", "sort_key": 14, "notes": "To book with Dublin Bay Vets, 5 Main Street, Clongriffin, Dublin 13 – 01 539 2330. Once booked, set the date with ✎ Edit (Due / booked for)." }
+  {
+   "name": "Morning walk",
+   "category": "Daily",
+   "frequency": "Daily",
+   "sort_key": 1,
+   "notes": "Derek walks Art every day (works from home Mon/Wed/Fri)."
+  },
+  {
+   "name": "Breakfast",
+   "category": "Daily",
+   "frequency": "Daily",
+   "sort_key": 2,
+   "notes": null
+  },
+  {
+   "name": "Evening walk",
+   "category": "Daily",
+   "frequency": "Daily",
+   "sort_key": 3,
+   "notes": null
+  },
+  {
+   "name": "Dinner",
+   "category": "Daily",
+   "frequency": "Daily",
+   "sort_key": 4,
+   "notes": null
+  },
+  {
+   "name": "Worming tablet",
+   "category": "Treatments",
+   "frequency": "Monthly",
+   "sort_key": 10,
+   "due_date": "2026-10-24",
+   "notes": "Last given September 2026 (exact day not known), so treated as due now (October 2026)."
+  },
+  {
+   "name": "Flea tablet",
+   "category": "Treatments",
+   "frequency": "Monthly",
+   "sort_key": 11,
+   "due_date": "2026-10-24",
+   "notes": "Due now (October 2026). Ask the vet about a combined flea and tick tablet (e.g. NexGard or Bravecto)."
+  },
+  {
+   "name": "Wash",
+   "category": "Grooming",
+   "frequency": "Monthly",
+   "sort_key": 12,
+   "due_date": "2026-10-24",
+   "notes": "Date of the last wash not known, so treated as due now."
+  },
+  {
+   "name": "Vaccine booster",
+   "category": "Vet & health",
+   "frequency": "Yearly",
+   "sort_key": 13,
+   "last_done": "2026-08-15",
+   "notes": "Last booster mid-August 2026 (date taken as 15/08/2026). Dublin Bay Vets, 01 539 2330."
+  },
+  {
+   "name": "Teeth cleaning at vet",
+   "category": "Vet & health",
+   "frequency": "One-off",
+   "sort_key": 14,
+   "notes": "To book with Dublin Bay Vets, 5 Main Street, Clongriffin, Dublin 13 – 01 539 2330. Once booked, set the date with ✎ Edit (Due / booked for)."
+  },
+  {
+   "name": "Fresh water check",
+   "category": "Daily",
+   "frequency": "Daily",
+   "sort_key": 5,
+   "notes": null
+  },
+  {
+   "name": "Nail trim",
+   "category": "Grooming",
+   "frequency": "Every 4 weeks",
+   "sort_key": 22,
+   "notes": "Lurchers' nails grow fast – check they don't click on the floor.",
+   "due_date": "2026-10-24"
+  },
+  {
+   "name": "Ear check",
+   "category": "Grooming",
+   "frequency": "Fortnightly",
+   "sort_key": 23,
+   "notes": null,
+   "due_date": "2026-10-24"
+  },
+  {
+   "name": "Teeth brushing",
+   "category": "Grooming",
+   "frequency": "A few times a week",
+   "sort_key": 24,
+   "notes": "Every 2–3 days. Helps keep his teeth clean after the vet cleaning.",
+   "due_date": "2026-10-24"
+  },
+  {
+   "name": "Coat brush",
+   "category": "Grooming",
+   "frequency": "Weekly",
+   "sort_key": 25,
+   "notes": null,
+   "due_date": "2026-10-24"
+  },
+  {
+   "name": "Weigh-in",
+   "category": "Vet & health",
+   "frequency": "Monthly",
+   "sort_key": 26,
+   "notes": "Last 20 kg on 24/10/2026. Log the weight in Health.",
+   "last_done": "2026-10-24"
+  },
+  {
+   "name": "Annual check-up",
+   "category": "Vet & health",
+   "frequency": "Yearly",
+   "sort_key": 27,
+   "notes": "Do it with the vaccine booster (due 15/08/2027).",
+   "due_date": "2027-08-15"
+  },
+  {
+   "name": "Kennel cough vaccine",
+   "category": "Vet & health",
+   "frequency": "One-off",
+   "sort_key": 28,
+   "notes": "To ask: check with Dublin Bay Vets (01 539 2330) whether he's covered."
+  },
+  {
+   "name": "Dog licence renewal",
+   "category": "Home & admin",
+   "frequency": "Yearly",
+   "sort_key": 29,
+   "notes": "Renewal date not known yet – set it with ✎ Edit. An annual dog licence is a legal requirement in Ireland (licences.ie)."
+  },
+  {
+   "name": "Pet insurance renewal",
+   "category": "Home & admin",
+   "frequency": "Yearly",
+   "sort_key": 30,
+   "notes": "Renewal date not known yet – set it with ✎ Edit."
+  },
+  {
+   "name": "Microchip details check",
+   "category": "Home & admin",
+   "frequency": "Yearly",
+   "sort_key": 31,
+   "notes": "Check the address and phone number are current on the microchip database.",
+   "due_date": "2026-10-24"
+  },
+  {
+   "name": "Wash bed and blankets",
+   "category": "Home & admin",
+   "frequency": "Monthly",
+   "sort_key": 32,
+   "notes": null,
+   "due_date": "2026-10-24"
+  },
+  {
+   "name": "Wash bowls",
+   "category": "Home & admin",
+   "frequency": "Weekly",
+   "sort_key": 33,
+   "notes": null,
+   "due_date": "2026-10-24"
+  },
+  {
+   "name": "Halloween fireworks plan",
+   "category": "Seasonal",
+   "frequency": "One-off",
+   "sort_key": 34,
+   "notes": "Walk early before dark, close the curtains, play background noise, set up a safe den, keep his ID tag on.",
+   "due_date": "2026-10-29"
+  },
+  {
+   "name": "Winter coat out",
+   "category": "Seasonal",
+   "frequency": "Yearly",
+   "sort_key": 35,
+   "notes": "Lurchers feel the cold.",
+   "due_date": "2026-11-01"
+  },
+  {
+   "name": "Christmas food safety",
+   "category": "Seasonal",
+   "frequency": "Yearly",
+   "sort_key": 36,
+   "notes": "No chocolate, grapes/raisins, mince pies, cooked bones or xylitol.",
+   "due_date": "2026-12-15"
+  }
  ],
  "supplies": [
-  { "name": "Food", "low": false, "sort_key": 1, "notes": null },
-  { "name": "Treats", "low": false, "sort_key": 2, "notes": null },
-  { "name": "Flea tablets", "low": false, "sort_key": 3, "notes": null },
-  { "name": "Worming tablets", "low": false, "sort_key": 4, "notes": null }
+  {
+   "name": "Food",
+   "low": false,
+   "sort_key": 1,
+   "notes": null
+  },
+  {
+   "name": "Treats",
+   "low": false,
+   "sort_key": 2,
+   "notes": null
+  },
+  {
+   "name": "Flea tablets",
+   "low": false,
+   "sort_key": 3,
+   "notes": null
+  },
+  {
+   "name": "Worming tablets",
+   "low": false,
+   "sort_key": 4,
+   "notes": null
+  },
+  {
+   "name": "Poo bags",
+   "low": false,
+   "sort_key": 5,
+   "notes": null
+  },
+  {
+   "name": "Shampoo",
+   "low": false,
+   "sort_key": 6,
+   "notes": null
+  },
+  {
+   "name": "Dental chews",
+   "low": false,
+   "sort_key": 7,
+   "notes": null
+  }
  ],
  "health": [
-  { "entry_date": "2026-10-24", "text": "Weight about 20 kg", "weight_kg": 20 }
+  {
+   "entry_date": "2026-10-24",
+   "text": "Weight about 20 kg",
+   "weight_kg": 20
+  }
+ ],
+ "renames": {
+  "category": {
+   "Treatment": "Treatments",
+   "Vet": "Vet & health"
+  }
+ },
+ "note_additions": [
+  {
+   "name": "Flea tablet",
+   "marker": "NexGard",
+   "text": "Ask the vet about a combined flea and tick tablet (e.g. NexGard or Bravecto)."
+  }
  ]
 }
