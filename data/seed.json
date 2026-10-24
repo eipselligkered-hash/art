@@ -1,0 +1,22 @@
+{
+ "items": [
+  { "name": "Morning walk", "category": "Daily", "frequency": "Daily", "sort_key": 1, "notes": "Derek walks Art every day (works from home Mon/Wed/Fri)." },
+  { "name": "Breakfast", "category": "Daily", "frequency": "Daily", "sort_key": 2, "notes": null },
+  { "name": "Evening walk", "category": "Daily", "frequency": "Daily", "sort_key": 3, "notes": null },
+  { "name": "Dinner", "category": "Daily", "frequency": "Daily", "sort_key": 4, "notes": null },
+  { "name": "Worming tablet", "category": "Treatment", "frequency": "Monthly", "sort_key": 10, "due_date": "2026-10-24", "notes": "Last given September 2026 (exact day not known), so treated as due now (October 2026)." },
+  { "name": "Flea tablet", "category": "Treatment", "frequency": "Monthly", "sort_key": 11, "due_date": "2026-10-24", "notes": "Due now (October 2026)." },
+  { "name": "Wash", "category": "Grooming", "frequency": "Monthly", "sort_key": 12, "due_date": "2026-10-24", "notes": "Date of the last wash not known, so treated as due now." },
+  { "name": "Vaccine booster", "category": "Vet", "frequency": "Yearly", "sort_key": 13, "last_done": "2026-08-15", "notes": "Last booster mid-August 2026 (date taken as 15/08/2026). Dublin Bay Vets, 01 539 2330." },
+  { "name": "Teeth cleaning at vet", "category": "Vet", "frequency": "One-off", "sort_key": 14, "notes": "To book with Dublin Bay Vets, 5 Main Street, Clongriffin, Dublin 13 – 01 539 2330. Once booked, set the date with ✎ Edit (Due / booked for)." }
+ ],
+ "supplies": [
+  { "name": "Food", "low": false, "sort_key": 1, "notes": null },
+  { "name": "Treats", "low": false, "sort_key": 2, "notes": null },
+  { "name": "Flea tablets", "low": false, "sort_key": 3, "notes": null },
+  { "name": "Worming tablets", "low": false, "sort_key": 4, "notes": null }
+ ],
+ "health": [
+  { "entry_date": "2026-10-24", "text": "Weight about 20 kg", "weight_kg": 20 }
+ ]
+}

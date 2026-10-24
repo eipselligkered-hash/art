@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en-IE">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f6f5e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Art">
+  <title>Art</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css?v=1">
+  <script src="config.js?v=1"></script>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>🐕 Art</h1>
+      <div class="sub" id="today"></div>
+    </div>
+    <button class="ghost" id="account" aria-label="Settings"></button>
+  </header>
+  <main id="view" aria-live="polite"><p class="empty">Loading…</p></main>
+  <nav class="tabs" role="tablist">
+    <button data-tab="today" role="tab"><span class="ico">🐾</span>Today</button>
+    <button data-tab="care" role="tab"><span class="ico">💊</span>Care</button>
+    <button data-tab="health" role="tab"><span class="ico">📓</span>Health</button>
+    <button data-tab="supplies" role="tab"><span class="ico">🛒</span>Supplies</button>
+  </nav>
+  <div id="toast" class="toast" hidden></div>
+  <dialog id="sheet" class="sheet">
+    <form method="dialog">
+      <h2 id="sheet-title">Done on…</h2>
+      <p class="muted" id="sheet-task"></p>
+      <label class="field">Date <input type="date" id="sheet-date" required></label>
+      <p class="muted small" id="sheet-note"></p>
+      <div class="row-btns">
+        <button value="cancel" class="ghost">Cancel</button>
+        <button value="ok" class="primary" id="sheet-ok">Mark done</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="item-sheet" class="sheet tall" aria-label="Item details"></dialog>
+  <dialog id="edit-sheet" class="sheet tall" aria-label="Edit"></dialog>
+  <dialog id="settings" class="sheet tall" aria-label="Settings"></dialog>
+  <script type="module" src="src/app.js?v=1"></script>
+</body>
+</html>
